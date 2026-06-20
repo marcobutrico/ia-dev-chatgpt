@@ -70,10 +70,22 @@ tabs.forEach((tab) => {
 ticketForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  const emailField = document.querySelector("#email");
+  const emailValue = emailField.value.trim();
+  const fullEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!fullEmailPattern.test(emailValue)) {
+    emailField.setCustomValidity("Digite um e-mail completo, como nome@empresa.com.");
+    emailField.reportValidity();
+    return;
+  }
+
+  emailField.setCustomValidity("");
+
   const formTicket = {
     id: nextId(),
     requester: document.querySelector("#requester").value.trim(),
-    email: document.querySelector("#email").value.trim(),
+    email: emailValue,
     category: document.querySelector("#category").value,
     priority: document.querySelector("#priority").value,
     status: "Aberto",
