@@ -47,6 +47,13 @@ const ticketDetails = document.querySelector("#ticketDetails");
 const ticketCounter = document.querySelector("#ticketCounter");
 const historyTable = document.querySelector("#historyTable");
 const searchInput = document.querySelector("#searchInput");
+const categoryFilter = document.querySelector("#categoryFilter");
+const clearFilters = document.querySelector("#clearFilters");
+const historySearchInput = document.querySelector("#historySearchInput");
+const historyCategoryFilter = document.querySelector("#historyCategoryFilter");
+const historyStatusFilter = document.querySelector("#historyStatusFilter");
+const historyPriorityFilter = document.querySelector("#historyPriorityFilter");
+const clearHistoryFilters = document.querySelector("#clearHistoryFilters");
 const clearData = document.querySelector("#clearData");
 const toast = document.querySelector("#toast");
 
@@ -89,6 +96,13 @@ ticketForm.addEventListener("submit", (event) => {
 });
 
 searchInput.addEventListener("input", renderTicketList);
+categoryFilter.addEventListener("change", renderTicketList);
+clearFilters.addEventListener("click", resetAnalystFilters);
+historySearchInput.addEventListener("input", renderHistory);
+historyCategoryFilter.addEventListener("change", renderHistory);
+historyStatusFilter.addEventListener("change", renderHistory);
+historyPriorityFilter.addEventListener("change", renderHistory);
+clearHistoryFilters.addEventListener("click", resetHistoryFilters);
 
 clearData.addEventListener("click", () => {
   tickets = [];
@@ -132,11 +146,12 @@ function render() {
 
 function renderTicketList() {
   const term = searchInput.value.trim().toLowerCase();
+  const selectedCategory = categoryFilter.value;
   const filteredTickets = tickets.filter((ticket) => {
-    return (
-      String(ticket.id).includes(term) ||
-      ticket.title.toLowerCase().includes(term)
-    );
+    const matchesTerm = matchesSearchTerm(ticket, term);
+    const matchesCategory = !selectedCategory || ticket.category === selectedCategory;
+
+    return matchesTerm && matchesCategory;
   });
 
   ticketCounter.textContent = `${filteredTickets.length} chamado${filteredTickets.length === 1 ? "" : "s"}`;
@@ -151,8 +166,8 @@ function renderTicketList() {
       <span class="ticket-title">#${ticket.id} - ${escapeHtml(ticket.title)}</span>
       <span class="ticket-meta">${escapeHtml(ticket.requester)} • ${formatDate(ticket.updatedAt)}</span>
       <span class="badge-row">
-        <span class="badge ${statusClass(ticket.status)}">${ticket.status}</span>
-        <span class="badge ${priorityClass(ticket.priority)}">${ticket.priority}</span>
+        ${renderBadge(ticket.status, statusClass(ticket.status), statusIcon(ticket.status))}
+        ${renderBadge(ticket.priority, priorityClass(ticket.priority), priorityIcon(ticket.priority))}
       </span>
     </button>
   `).join("");
@@ -164,6 +179,20 @@ function renderTicketList() {
       renderTicketDetails();
     });
   });
+}
+
+function resetAnalystFilters() {
+  searchInput.value = "";
+  categoryFilter.value = "";
+  renderTicketList();
+}
+
+function resetHistoryFilters() {
+  historySearchInput.value = "";
+  historyCategoryFilter.value = "";
+  historyStatusFilter.value = "";
+  historyPriorityFilter.value = "";
+  renderHistory();
 }
 
 function renderTicketDetails() {
@@ -186,7 +215,7 @@ function renderTicketDetails() {
         <h3>${escapeHtml(ticket.title)}</h3>
         <p class="ticket-meta">Aberto por ${escapeHtml(ticket.requester)} em ${formatDate(ticket.createdAt)}</p>
       </div>
-      <span class="badge ${statusClass(ticket.status)}">${ticket.status}</span>
+      ${renderBadge(ticket.status, statusClass(ticket.status), statusIcon(ticket.status))}
     </div>
 
     <div class="details-grid">
@@ -268,16 +297,112 @@ function updateSelectedTicket(ticketId) {
 }
 
 function renderHistory() {
-  historyTable.innerHTML = tickets.map((ticket) => `
+  const term = historySearchInput.value.trim().toLowerCase();
+  const selectedCategory = historyCategoryFilter.value;
+  const selectedStatus = historyStatusFilter.value;
+  const selectedPriority = historyPriorityFilter.value;
+  const filteredTickets = tickets.filter((ticket) => {
+    return (
+      matchesSearchTerm(ticket, term) &&
+      (!selectedCategory || ticket.category === selectedCategory) &&
+      (!selectedStatus || ticket.status === selectedStatus) &&
+      (!selectedPriority || ticket.priority === selectedPriority)
+    );
+  });
+
+  historyTable.innerHTML = filteredTickets.map((ticket) => `
     <tr>
       <td>#${ticket.id}</td>
       <td>${escapeHtml(ticket.title)}</td>
       <td>${escapeHtml(ticket.requester)}</td>
-      <td><span class="badge ${statusClass(ticket.status)}">${ticket.status}</span></td>
-      <td><span class="badge ${priorityClass(ticket.priority)}">${ticket.priority}</span></td>
+      <td>${renderBadge(ticket.status, statusClass(ticket.status), statusIcon(ticket.status))}</td>
+      <td>${renderBadge(ticket.priority, priorityClass(ticket.priority), priorityIcon(ticket.priority))}</td>
       <td>${formatDate(ticket.updatedAt)}</td>
+      <td>${renderReopenAction(ticket)}</td>
     </tr>
   `).join("");
+
+  document.querySelectorAll(".reopen-ticket").forEach((button) => {
+    button.addEventListener("click", () => reopenTicket(Number(button.dataset.ticketId)));
+  });
+}
+
+function matchesSearchTerm(ticket, term) {
+  return (
+    String(ticket.id).includes(term) ||
+    ticket.title.toLowerCase().includes(term) ||
+    ticket.requester.toLowerCase().includes(term) ||
+    ticket.email.toLowerCase().includes(term)
+  );
+}
+
+function renderReopenAction(ticket) {
+  if (ticket.status !== "Resolvido") {
+    return '<span class="muted-action">-</span>';
+  }
+
+  return `<button class="table-action reopen-ticket" type="button" data-ticket-id="${ticket.id}">Reabrir</button>`;
+}
+
+function reopenTicket(ticketId) {
+  const ticket = tickets.find((item) => item.id === ticketId);
+  if (!ticket || ticket.status !== "Resolvido") return;
+
+  ticket.status = "Aberto";
+  ticket.updatedAt = new Date().toISOString();
+  ticket.events = ticket.events.concat("Chamado reaberto a partir do histórico.");
+  selectedTicketId = ticket.id;
+
+  saveTickets();
+  showToast(`Chamado #${ticket.id} reaberto.`);
+  render();
+}
+
+function renderBadge(label, className, iconName) {
+  return `
+    <span class="badge ${className}">
+      ${iconSvg(iconName)}
+      <span>${escapeHtml(label)}</span>
+    </span>
+  `;
+}
+
+function statusIcon(status) {
+  const icons = {
+    "Aberto": "plus",
+    "Em atendimento": "clock",
+    "Aguardando usuário": "pause",
+    "Resolvido": "check"
+  };
+
+  return icons[status] ?? "circle";
+}
+
+function priorityIcon(priority) {
+  const icons = {
+    "Baixa": "arrow-down",
+    "Média": "minus",
+    "Alta": "arrow-up",
+    "Crítica": "alert"
+  };
+
+  return icons[priority] ?? "circle";
+}
+
+function iconSvg(name) {
+  const icons = {
+    "alert": '<path d="M12 4 3.5 19h17L12 4Z"></path><path d="M12 9v4"></path><path d="M12 16h.01"></path>',
+    "arrow-down": '<path d="M12 5v14"></path><path d="m6 13 6 6 6-6"></path>',
+    "arrow-up": '<path d="M12 19V5"></path><path d="m6 11 6-6 6 6"></path>',
+    "check": '<path d="M20 6 9 17l-5-5"></path>',
+    "circle": '<circle cx="12" cy="12" r="7"></circle>',
+    "clock": '<circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path>',
+    "minus": '<path d="M5 12h14"></path>',
+    "pause": '<path d="M8 5v14"></path><path d="M16 5v14"></path>',
+    "plus": '<path d="M12 5v14"></path><path d="M5 12h14"></path>'
+  };
+
+  return `<svg class="badge-icon" viewBox="0 0 24 24" aria-hidden="true">${icons[name] ?? icons.circle}</svg>`;
 }
 
 function statusClass(status) {
