@@ -54,6 +54,9 @@ const historyCategoryFilter = document.querySelector("#historyCategoryFilter");
 const historyStatusFilter = document.querySelector("#historyStatusFilter");
 const historyPriorityFilter = document.querySelector("#historyPriorityFilter");
 const clearHistoryFilters = document.querySelector("#clearHistoryFilters");
+const dashboardKpis = document.querySelector("#dashboardKpis");
+const dashboardCategoryChart = document.querySelector("#dashboardCategoryChart");
+const dashboardCategoryCards = document.querySelector("#dashboardCategoryCards");
 const clearData = document.querySelector("#clearData");
 const toast = document.querySelector("#toast");
 
@@ -154,6 +157,7 @@ function render() {
   renderTicketList();
   renderTicketDetails();
   renderHistory();
+  renderDashboard();
 }
 
 function renderTicketList() {
@@ -337,6 +341,149 @@ function renderHistory() {
   document.querySelectorAll(".reopen-ticket").forEach((button) => {
     button.addEventListener("click", () => reopenTicket(Number(button.dataset.ticketId)));
   });
+}
+
+function renderDashboard() {
+  const dashboardData = buildDashboardData();
+
+  dashboardKpis.innerHTML = [
+    {
+      label: "Total de chamados",
+      value: dashboardData.totalTickets,
+      hint: `${dashboardData.openTickets} em aberto`
+    },
+    {
+      label: "Taxa de resolução",
+      value: `${dashboardData.resolutionRate}%`,
+      hint: `${dashboardData.resolvedTickets} chamados resolvidos`
+    },
+    {
+      label: "Tempo médio",
+      value: `${dashboardData.averageAgeHours}h`,
+      hint: "Tempo médio desde a abertura"
+    },
+    {
+      label: "Performance geral",
+      value: `${dashboardData.overallScore}%`,
+      hint: "Média ponderada por categoria"
+    }
+  ].map((item) => `
+    <article class="kpi-card">
+      <p>${escapeHtml(item.label)}</p>
+      <strong>${escapeHtml(String(item.value))}</strong>
+      <span>${escapeHtml(item.hint)}</span>
+    </article>
+  `).join("");
+
+  dashboardCategoryChart.innerHTML = dashboardData.categories.map((category) => `
+    <article class="category-bar-card">
+      <div class="category-bar-head">
+        <div>
+          <strong>${escapeHtml(category.name)}</strong>
+          <p>${category.total} chamados · ${category.resolved} resolvidos</p>
+        </div>
+        <span class="category-score ${scoreClass(category.score)}">${category.score}%</span>
+      </div>
+      <div class="bar-track" aria-hidden="true">
+        <div class="bar-fill" style="width: ${category.score}%"></div>
+      </div>
+      <div class="category-bar-foot">
+        <span>${category.backlog} em fila</span>
+        <span>${category.avgAgeHours}h médio</span>
+      </div>
+    </article>
+  `).join("");
+
+  dashboardCategoryCards.innerHTML = dashboardData.categories.map((category) => `
+    <article class="team-card">
+      <div class="team-card-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(category.name)}</p>
+          <h4>${escapeHtml(category.owner)}</h4>
+        </div>
+        <span class="team-score ${scoreClass(category.score)}">${category.score}%</span>
+      </div>
+      <p class="team-summary">${category.total} chamados no período, com ${category.resolved} resolvidos e ${category.backlog} ainda em atendimento.</p>
+      <ul class="team-metrics">
+        <li><strong>${category.resolutionRate}%</strong><span>resolução</span></li>
+        <li><strong>${category.avgAgeHours}h</strong><span>tempo médio</span></li>
+        <li><strong>${category.openTickets}</strong><span>abertos</span></li>
+      </ul>
+    </article>
+  `).join("");
+}
+
+function buildDashboardData() {
+  const categories = ["Hardware", "Software", "Rede", "Acesso", "Outro"];
+  const owners = {
+    Hardware: "Equipe de Infraestrutura",
+    Software: "Equipe de Sistemas",
+    Rede: "Equipe de Conectividade",
+    Acesso: "Equipe de Identidade",
+    Outro: "Equipe de Triagem"
+  };
+
+  const categoryStats = categories.map((name) => {
+    const groupTickets = tickets.filter((ticket) => ticket.category === name);
+    const resolvedTickets = groupTickets.filter((ticket) => ticket.status === "Resolvido");
+    const openTickets = groupTickets.filter((ticket) => ticket.status !== "Resolvido");
+    const avgAgeHours = groupTickets.length
+      ? Math.round(groupTickets.reduce((sum, ticket) => sum + hoursBetween(ticket.createdAt, ticket.updatedAt), 0) / groupTickets.length)
+      : 0;
+    const resolutionRate = groupTickets.length ? Math.round((resolvedTickets.length / groupTickets.length) * 100) : 0;
+    const backlogPenalty = Math.min(openTickets.length * 7, 35);
+    const agePenalty = Math.min(avgAgeHours, 35);
+    const score = Math.max(0, Math.min(100, Math.round(resolutionRate * 0.7 + (100 - backlogPenalty - agePenalty) * 0.3)));
+
+    return {
+      name,
+      owner: owners[name],
+      total: groupTickets.length,
+      resolved: resolvedTickets.length,
+      openTickets: openTickets.length,
+      backlog: openTickets.length,
+      avgAgeHours,
+      resolutionRate,
+      score
+    };
+  });
+
+  const totalTickets = tickets.length;
+  const resolvedTickets = tickets.filter((ticket) => ticket.status === "Resolvido").length;
+  const openTickets = totalTickets - resolvedTickets;
+  const averageAgeHours = totalTickets
+    ? Math.round(tickets.reduce((sum, ticket) => sum + hoursBetween(ticket.createdAt, ticket.updatedAt), 0) / totalTickets)
+    : 0;
+  const resolutionRate = totalTickets ? Math.round((resolvedTickets / totalTickets) * 100) : 0;
+  const overallScore = categoryStats.length
+    ? Math.round(categoryStats.reduce((sum, category) => sum + category.score, 0) / categoryStats.length)
+    : 0;
+
+  return {
+    totalTickets,
+    resolvedTickets,
+    openTickets,
+    averageAgeHours,
+    resolutionRate,
+    overallScore,
+    categories: categoryStats
+  };
+}
+
+function hoursBetween(start, end) {
+  return Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 36e5));
+}
+
+function scoreClass(score) {
+  if (score >= 80) {
+    return "score-good";
+  }
+
+  if (score >= 60) {
+    return "score-warning";
+  }
+
+  return "score-bad";
 }
 
 function matchesSearchTerm(ticket, term) {

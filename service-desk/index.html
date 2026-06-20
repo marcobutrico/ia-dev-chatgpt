@@ -16,6 +16,7 @@
       <button class="tab is-active" data-view="userView">Abrir chamado</button>
       <button class="tab" data-view="analystView">Painel do analista</button>
       <button class="tab" data-view="historyView">Histórico</button>
+      <button class="tab" data-view="dashboardView">Dashboard</button>
     </nav>
   </header>
 
@@ -185,6 +186,42 @@
           </thead>
           <tbody id="historyTable"></tbody>
         </table>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="view" aria-labelledby="dashboardTitle">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Desempenho</p>
+          <h2 id="dashboardTitle">Dashboard de performance</h2>
+        </div>
+        <p>Visão consolidada da operação com indicadores por categoria, volume de atendimento e taxa de resolução.</p>
+      </div>
+
+      <div class="dashboard-kpis" id="dashboardKpis"></div>
+
+      <div class="dashboard-layout">
+        <section class="dashboard-panel dashboard-chart-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="eyebrow">Leitura rápida</p>
+              <h3>Performance por categoria</h3>
+            </div>
+            <span class="panel-caption">Pontuação baseada em resolução, fila e tempo médio</span>
+          </div>
+          <div id="dashboardCategoryChart" class="category-chart"></div>
+        </section>
+
+        <section class="dashboard-panel dashboard-team-panel">
+          <div class="panel-title-row">
+            <div>
+              <p class="eyebrow">Equipe por categoria</p>
+              <h3>Boxes de atendimento</h3>
+            </div>
+            <span class="panel-caption">Cada categoria representa uma frente de atuação</span>
+          </div>
+          <div id="dashboardCategoryCards" class="category-cards"></div>
+        </section>
       </div>
     </section>
   </main>
