@@ -84,10 +84,24 @@
           <p class="eyebrow">Suporte</p>
           <h2 id="analystTitle">Painel do analista</h2>
         </div>
-        <label class="search-box">
-          Buscar chamado
-          <input id="searchInput" type="search" placeholder="Digite ID, título ou solicitante">
-        </label>
+        <div class="analyst-filters">
+          <label class="search-box">
+            Buscar chamado
+            <input id="searchInput" type="search" placeholder="Digite ID, título, solicitante ou e-mail">
+          </label>
+          <label class="category-filter">
+            Categoria
+            <select id="categoryFilter">
+              <option value="">Todas</option>
+              <option>Hardware</option>
+              <option>Software</option>
+              <option>Rede</option>
+              <option>Acesso</option>
+              <option>Outro</option>
+            </select>
+          </label>
+          <button id="clearFilters" type="button">Limpar filtros</button>
+        </div>
       </div>
 
       <div class="support-layout">
@@ -117,6 +131,45 @@
         <button id="clearData">Limpar base local</button>
       </div>
 
+      <div class="history-filters">
+        <label class="search-box">
+          Buscar chamado
+          <input id="historySearchInput" type="search" placeholder="Digite ID, título, solicitante ou e-mail">
+        </label>
+        <label>
+          Categoria
+          <select id="historyCategoryFilter">
+            <option value="">Todas</option>
+            <option>Hardware</option>
+            <option>Software</option>
+            <option>Rede</option>
+            <option>Acesso</option>
+            <option>Outro</option>
+          </select>
+        </label>
+        <label>
+          Status
+          <select id="historyStatusFilter">
+            <option value="">Todos</option>
+            <option>Aberto</option>
+            <option>Em atendimento</option>
+            <option>Aguardando usuário</option>
+            <option>Resolvido</option>
+          </select>
+        </label>
+        <label>
+          Prioridade
+          <select id="historyPriorityFilter">
+            <option value="">Todas</option>
+            <option>Baixa</option>
+            <option>Média</option>
+            <option>Alta</option>
+            <option>Crítica</option>
+          </select>
+        </label>
+        <button id="clearHistoryFilters" type="button">Limpar filtros</button>
+      </div>
+
       <div class="table-wrap">
         <table>
           <thead>
@@ -127,6 +180,7 @@
               <th>Status</th>
               <th>Prioridade</th>
               <th>Atualizado em</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody id="historyTable"></tbody>
