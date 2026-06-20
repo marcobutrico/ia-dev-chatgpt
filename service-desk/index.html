@@ -34,7 +34,7 @@
         <div class="field-grid">
           <label>
             Nome do solicitante
-            <input id="requester" type="text" placeholder="Ex.: Ana Souza" required>
+            <input id="requester" type="text" minlength="5" placeholder="Ex.: Ana Souza" title="Digite pelo menos 5 caracteres" required>
           </label>
           <label>
             E-mail
@@ -175,12 +175,12 @@
         <table>
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Título</th>
-              <th>Solicitante</th>
+              <th><button class="sort-header is-active" type="button" data-sort-field="id" aria-label="Ordenar por número do chamado">ID</button></th>
+              <th><button class="sort-header" type="button" data-sort-field="title" aria-label="Ordenar por título">Título</button></th>
+              <th><button class="sort-header" type="button" data-sort-field="requester" aria-label="Ordenar por solicitante">Solicitante</button></th>
               <th>Status</th>
               <th>Prioridade</th>
-              <th>Atualizado em</th>
+              <th><button class="sort-header" type="button" data-sort-field="updatedAt" aria-label="Ordenar por data de atualização">Atualizado em</button></th>
               <th>Ações</th>
             </tr>
           </thead>

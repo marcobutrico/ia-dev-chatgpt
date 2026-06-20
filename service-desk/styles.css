@@ -207,6 +207,35 @@ textarea {
   margin-bottom: 18px;
 }
 
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: #344054;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sort-header:hover {
+  color: var(--primary);
+}
+
+.sort-header.is-active {
+  color: var(--primary);
+}
+
+.sort-header:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
 .dashboard-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

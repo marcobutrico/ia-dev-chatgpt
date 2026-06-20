@@ -60,6 +60,17 @@ const dashboardCategoryCards = document.querySelector("#dashboardCategoryCards")
 const clearData = document.querySelector("#clearData");
 const toast = document.querySelector("#toast");
 
+let historySortField = "id";
+let historySortOrder = "asc";
+
+document.querySelector("#requester").addEventListener("input", () => {
+  document.querySelector("#requester").setCustomValidity("");
+});
+
+document.querySelector("#email").addEventListener("input", () => {
+  document.querySelector("#email").setCustomValidity("");
+});
+
 tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     tabs.forEach((item) => item.classList.remove("is-active"));
@@ -73,9 +84,22 @@ tabs.forEach((tab) => {
 ticketForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
+  const requesterField = document.querySelector("#requester");
+  const requesterValue = requesterField.value.trim();
   const emailField = document.querySelector("#email");
   const emailValue = emailField.value.trim();
   const fullEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  requesterField.setCustomValidity("");
+  emailField.setCustomValidity("");
+
+  if (requesterValue.length < 5) {
+    requesterField.setCustomValidity("Digite pelo menos 5 caracteres no nome do solicitante.");
+    requesterField.reportValidity();
+    return;
+  }
+
+  requesterField.setCustomValidity("");
 
   if (!fullEmailPattern.test(emailValue)) {
     emailField.setCustomValidity("Digite um e-mail completo, como nome@empresa.com.");
@@ -87,7 +111,7 @@ ticketForm.addEventListener("submit", (event) => {
 
   const formTicket = {
     id: nextId(),
-    requester: document.querySelector("#requester").value.trim(),
+    requester: requesterValue,
     email: emailValue,
     category: document.querySelector("#category").value,
     priority: document.querySelector("#priority").value,
@@ -98,7 +122,7 @@ ticketForm.addEventListener("submit", (event) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     events: [
-      `Chamado aberto por ${document.querySelector("#requester").value.trim()}.`
+      `Chamado aberto por ${requesterValue}.`
     ]
   };
 
@@ -118,6 +142,10 @@ historyCategoryFilter.addEventListener("change", renderHistory);
 historyStatusFilter.addEventListener("change", renderHistory);
 historyPriorityFilter.addEventListener("change", renderHistory);
 clearHistoryFilters.addEventListener("click", resetHistoryFilters);
+
+document.querySelectorAll(".sort-header").forEach((button) => {
+  button.addEventListener("click", () => handleHistorySort(button.dataset.sortField));
+});
 
 clearData.addEventListener("click", () => {
   tickets = [];
@@ -166,9 +194,14 @@ function renderTicketList() {
   const filteredTickets = tickets.filter((ticket) => {
     const matchesTerm = matchesSearchTerm(ticket, term);
     const matchesCategory = !selectedCategory || ticket.category === selectedCategory;
+    const isOpenTicket = ticket.status !== "Resolvido";
 
-    return matchesTerm && matchesCategory;
+    return matchesTerm && matchesCategory && isOpenTicket;
   });
+
+  if (!filteredTickets.some((ticket) => ticket.id === selectedTicketId)) {
+    selectedTicketId = filteredTickets[0]?.id ?? null;
+  }
 
   ticketCounter.textContent = `${filteredTickets.length} chamado${filteredTickets.length === 1 ? "" : "s"}`;
 
@@ -208,6 +241,21 @@ function resetHistoryFilters() {
   historyCategoryFilter.value = "";
   historyStatusFilter.value = "";
   historyPriorityFilter.value = "";
+  historySortField = "id";
+  historySortOrder = "asc";
+  updateHistorySortHeaders();
+  renderHistory();
+}
+
+function handleHistorySort(sortField) {
+  if (historySortField === sortField) {
+    historySortOrder = historySortOrder === "asc" ? "desc" : "asc";
+  } else {
+    historySortField = sortField;
+    historySortOrder = sortField === "id" ? "asc" : "asc";
+  }
+
+  updateHistorySortHeaders();
   renderHistory();
 }
 
@@ -308,11 +356,14 @@ function updateSelectedTicket(ticketId) {
   ticket.updatedAt = new Date().toISOString();
   ticket.events = ticket.events.concat(eventList);
 
+  saveTickets();
   showToast(`Chamado #${ticket.id} atualizado.`);
   render();
 }
 
 function renderHistory() {
+  updateHistorySortHeaders();
+
   const term = historySearchInput.value.trim().toLowerCase();
   const selectedCategory = historyCategoryFilter.value;
   const selectedStatus = historyStatusFilter.value;
@@ -324,7 +375,7 @@ function renderHistory() {
       (!selectedStatus || ticket.status === selectedStatus) &&
       (!selectedPriority || ticket.priority === selectedPriority)
     );
-  });
+  }).sort((firstTicket, secondTicket) => compareTickets(firstTicket, secondTicket, historySortField, historySortOrder));
 
   historyTable.innerHTML = filteredTickets.map((ticket) => `
     <tr>
@@ -341,6 +392,39 @@ function renderHistory() {
   document.querySelectorAll(".reopen-ticket").forEach((button) => {
     button.addEventListener("click", () => reopenTicket(Number(button.dataset.ticketId)));
   });
+}
+
+function updateHistorySortHeaders() {
+  document.querySelectorAll(".sort-header").forEach((button) => {
+    const isActive = button.dataset.sortField === historySortField;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-sort", isActive ? (historySortOrder === "asc" ? "ascending" : "descending") : "none");
+    button.textContent = `${sortHeaderLabel(button.dataset.sortField)}${isActive ? historySortOrder === "asc" ? " ▲" : " ▼" : ""}`;
+  });
+}
+
+function sortHeaderLabel(sortField) {
+  const labels = {
+    id: "ID",
+    title: "Título",
+    requester: "Solicitante",
+    updatedAt: "Atualizado em"
+  };
+
+  return labels[sortField] ?? sortField;
+}
+
+function compareTickets(firstTicket, secondTicket, sortField, sortOrder) {
+  const direction = sortOrder === "desc" ? -1 : 1;
+
+  if (sortField === "id") {
+    return direction * (firstTicket.id - secondTicket.id);
+  }
+
+  const firstValue = String(firstTicket[sortField] ?? "").toLowerCase();
+  const secondValue = String(secondTicket[sortField] ?? "").toLowerCase();
+
+  return direction * firstValue.localeCompare(secondValue, "pt-BR", { sensitivity: "base" });
 }
 
 function renderDashboard() {
